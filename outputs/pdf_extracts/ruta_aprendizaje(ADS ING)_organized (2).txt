@@ -1,0 +1,180 @@
+
+
+--- PAGE 1 ---
+7  
+   
+    EXPERIENCIA DE APRENDIZAJE 2 PROYECTO FASE 1 (20%)  Agrupamientos: 4-5 personas  Fecha de entrega:  19 de marzo  Tiempo estimado para el desarrollo de la actividad: 12 días           
+
+
+
+--- PAGE 2 ---
+8  
+  Análisis y diseño de sistemas Proyecto de cátedra, Fase 1, (Anexo 3)   
+  • El proyecto se presentará en grupos de cuatro personas como mínimo y un máximo de cinco. • Los trabajos extemporáneos, quedan a discreción del docente recibirlos; en todo caso, sujeto a la correspondiente justificación y sujetos a la nueva ponderación. • El plagio constituye una falta muy grave en el proceso de formación de los estudiantes, por tanto, este tipo de accione, serán penalizadas con la anulación del proyecto, perdiendo el estudiante el derecho a una apelación y/o reevaluación de dicha actividad. • Todos los archivos utilizados que conformen el proyecto deben comprimirse en una carpeta con extensión .zip o .rar y deberán enviarse mediante el enlace habilitado por su docente en el aula virtual.    
+   Formato del Documento  Interlineado: 1.5 Tipo de Documento: Archivo Word Nombre del Archivo: Tema de su sistema a desarrollar 
+Alineación: Justificada Tipo de Fuente: Arial Tamaño de Fuente: Título: 14 pt Párrafos:12 pt  Pie de Página:  No. De Página en esquina inferior derecha Contenido del documento Primer Avance 
+Consideraciones del proyecto 
+Especificaciones generales del proyecto 
+
+
+
+--- PAGE 3 ---
+9  
+Contenido Cantidad de Págs. 1. Portada 1 2. Índice 1 3. Introducción 1 4. Descripción del Problema 4.1 Actividad Principal de empresa 4.2 ¿Cuál es el problema por solucionar? 4.3 Situación Actual 
+1 – 2 
+5. Justificación e Importancia 1 6. Objetivos General (un solo objetivo) Específicos (3 objetivos) 
+1 
+7. Metodologías de Recolección de Información 7.1 Investigar diferentes metodologías (cuestionario, encuesta, observación, etc.) 
+3-4 
+8. Investigación Preliminar 8.1 Determinación de Requerimientos 3-5 
+9. Diagramas de Flujo de Datos 9.1 Contexto o nivel Cero 9.2 Primer Nivel 9.3 Segundo Nivel 
+3-5 
+10. Anexos 10.1 Instrumento utilizado en la recolección de información 
+1-2 
+
+
+--- PAGE 4 ---
+10  
+Descripción de los puntos 7 y 8  7. Metodologías de Recolección de Información. Deberán investigar las diferentes metodologías de recolección de información (consultar libros de Kendal & Kendall y Whitten), como entrevistas, cuestionarios, encuestas y observación. Una vez investigado y seleccionado la metodología o metodologías de recolección de información, elaborar la que utilizaran para su proyecto.  8. Determinación de Requerimientos Un requerimiento es una característica necesaria que deberá poseer el nuevo sistema. Por otra parte, la determinación de requerimientos es el estudio de un sistema para comprender cómo trabaja y dónde es necesario efectuar mejoras.  Todo sistema de información posee un conjunto de requerimientos básicos y un conjunto de requerimientos específicos dependiendo si el sistema será de soporte para transacciones o para la toma de decisiones. En este punto deben detallar los requerimientos que trabajaran (de 3 a 5) su investigación, análisis, diseño y desarrollo del sistema. El formato para la descripción de cada requerimiento será el siguiente:   Ejemplo Nombre del Requerimiento: Facturación   Descripción Actual del Proceso: El cajero del negocio llena una factura comercial de forma manual y escribe en el encabezado Nombre del Cliente, dirección y teléfono o móvil del cliente y fecha de la factura. Además, en el detalle de la factura escribe el código del artículo, descripción del artículo, cantidad, valor unitario, total y total de la factura. 
+
+
+--- PAGE 5 ---
+11  
+Documentación o Formulario Asociado:  
+ Participantes del proceso: Cajero, Cliente y Contador  Mejoramiento del proceso: Crear módulo de Facturación que genere e imprima de forma automática la factura.                FORMATO DE PORTADA DEL DOCUMENTO 
+
+
+
+--- PAGE 6 ---
+12  
+UNIVERSIDAD DON BOSCO   
+ ANALISIS Y DISEÑO DE SISTEMAS Docente: Juan Miranda   TEMA DEL PROYECTO   INTEGRANTES APELLIDOS NOMBRES CARNÉ                 Ciudadela Don Bosco, 19 de marzo de 2026. 
+
+
+
+--- PAGE 7 ---
+13  
+RUBRICA DE EVALUACION   ASPECTO EVALUADO PORCENTAJE ¿SE APLICO? NOTA Formato del documento 5%   Espacio Interlineado y Alineación  Tipo de Fuente y Tamaño de Fuente en Párrafo  
+Uso de Títulos y Subtítulos Tipo y Tamaño de Letra  
+Encabezado y Pie de pagina  Portada e Índice  Organiza conceptos solicitados de manera secuencial 5%    
+Introducción, Justificación e Importancia 10%    Objetivos General y Especifico 10%    Metodologías de Recolección de la Información 10%    
+Determinación de Requerimientos 20%    Diagramas de Flujo de Datos 20%    Presenta el contenido solicitado y coincide con el concepto 10%    
+Redacción del Documento. Correcto empleo de todos los elementos del lenguaje 
+10%    
+NOTA DE DOCUMENTO 100%    
+
+
+--- PAGE 8 ---
+14  
+ 
+    EXPERIENCIA DE APRENDIZAJE 2  PROYECTO FASE 2 (20%)  Agrupamientos: 4-5 personas  Fecha de entrega y defensa: 21 de mayo   Tiempo estimado para el desarrollo de la actividad: 15 días                        
+
+
+
+--- PAGE 9 ---
+15  
+Análisis y diseño de sistemas Proyecto de cátedra, Fase 2, (Anexo 4)   
+  • El proyecto se presentará en grupos de cuatro personas como mínimo y un máximo de cinco. • Los trabajos extemporáneos, quedan a discreción del docente recibirlos; en todo caso, sujeto a la correspondiente justificación y sujetos a la nueva ponderación. • El plagio constituye una falta muy grave en el proceso de formación de los estudiantes, por tanto, este tipo de accione, serán penalizadas con la anulación del proyecto, perdiendo el estudiante el derecho a una apelación y/o reevaluación de dicha actividad. • Todos los archivos utilizados que conformen el proyecto deben comprimirse en una carpeta con extensión .zip o .rar y deberán enviarse mediante el enlace habilitado por su docente en el aula virtual.    
+  Contenido del documento Segundo Avance  Contenido Cantidad de Págs. 1. Portada 1 2. Índice 1 3. Introducción 1 4. Descripción del Problema 4.1 Actividad Principal de empresa 4.2 ¿Cuál es el problema a solucionar? 4.3 Situación Actual 
+1 – 2 
+5. Justificación e Importancia 1 6. Objetivos General (un solo objetivo) Específicos ( 3 objetivos) 1 
+7. Metodologías de Recolección de Información 7.1 Investigar diferentes metodologías (cuestionario, encuesta, observación, etc.) 3-4 
+8. Investigación Preliminar 8.1 Determinación de Requerimientos 3-5 9. Diagramas de Flujo de Datos 9.1 Contexto o nivel Cero 9.2 Primer Nivel 3-5 
+Consideraciones del proyecto general 
+Especificaciones del proyecto fase 2 
+
+
+
+--- PAGE 10 ---
+16  
+9.3 Segundo Nivel  10. Modelo de Base de Datos  11. Diagrama de Casos de Uso y sus Escenarios 12. Diagrama de actividades y carriles 13. Diagrama de componentes  
+14. Anexos 14.1 Instrumento utilizado en la recolección de información 14.2 Diseño de interfaz del sistema (Logueo, perfil de usuarios, dashboard, formularios principales) 
+ 
+   RUBRICA DE EVALUACIÓN DOCUMENTO SEGUNDO AVANCE (30%)  ASPECTO EVALUADO PORCENTAJE ¿SE APLICO? NOTA 
+Formato del documento 5%   Espacio Interlineado y Alineación  Tipo de Fuente y Tamaño de Fuente en Párrafo  Uso de Títulos y Subtítulos Tipo y Tamaño de Letra  
+Encabezado y Pie de pagina  Portada e Índice  Organiza conceptos solicitados de manera secuencial 5%    
+Modelo de Base de Datos     • Realizó completamente los modelos de base de datos: E-R y relacional con todos sus elementos (entidades, atributos, relaciones, cardinalidad y generalización) 
+10%    
+• Ingresó la cantidad de registros suficientes (al menos unos 50 registros), para poder realizar pruebas de los resultados en cada una de las opciones mostradas. 
+5%    
+Diagramas de Casos de Uso     • Los actores están bien especificados y son los necesarios en el sistema. 5%    • Los casos de uso indican claramente su funcionalidad utilizando verbos en infinitivo 5%    
+• Se utilizan extend e include de forma correcta y justificada. 5%    • No hay falta de ortografía en el diagrama; además se denota orden dentro del diagrama (las líneas no se cruzan) 
+5%    
+Escenarios para Cada Caso de Uso     
+
+
+--- PAGE 11 ---
+17  
+• Aparece una narrativa para cada caso de uso, en la que se describe claramente como mínimo los siguientes aspectos: Nombre del caso de uso, propósito, actores que participan, cómo se activa, la descripción paso a paso de la interacción entre el sistema y el actor durante la ejecución del caso de uso en donde se específica lo que hace el actor y lo que hace el sistema (solamente lo que es visible por el actor). El lenguaje utilizado es entendible para el cliente del sistema. 
+15%    
+Diseño de interfaz del sistema (logueo, opciones y formularios principales)     
+• Muestra una imagen por cada una de las pantallas que mostrará el sistema durante la ejecución de los casos de uso. Las pantallas indican todo lo que verá el usuario durante su interacción con el sistema. Cada pantalla tiene relación con una actividad del sistema durante un caso de uso. 
+30%    
+Calidad en la presentación y organización del documento, en la expresión escrita y en la ortografía. 5%    
+Referencias bibliográficas están de acuerdo al formato APA. 5%    
+NOTA DE DOCUMENTO 100%    
+
+
+--- PAGE 12 ---
+18  
+RÚBRICA DE EVALUACIÓN DE DEFENSA DE PROYECTO (20%)  Aspecto a evaluar Excelente  10-9 Muy bueno  8-7 Bueno  6-5 Deficiente  4-0 E1 E2 E3 E4 E5 E6 
+Postura del cuerpo, contacto visual 
+Tiene buena postura, se muestra relajado  y seguro de sí mismo. Establece contacto visual con todos en el salón durante la presentación 
+Tiene buena postura  y establece contacto visual con todos en el salón durante la presentación. 
+Algunas veces tiene buena postura  y establece contacto visual. 
+Tiene mala postura y/o mira a las personas durante  la presentación. 
+      
+Claridad y contenido Hablan con claridad, demuestran un completo entendimiento del tema y se mantienen en el tema todo (100%)  el tiempo 
+Hablan con claridad   la mayor  parte del  tiempo, demuestran un   buen entendimiento del tema y se mantienen en el tema  la mayor  parte (85%)   del tiempo 
+Habla    con claridad parte del tiempo, demuestran un   buen entendimiento de partes del tema  y   se mantienen en el   tema algunas veces (70%) 
+No hablan con claridad, no parecen entender muy bien el tema y no tienen claro el trabajo que ha desarrollado. 
+      
+Comprensión El estudiante puede con precisión contestar todas  las preguntas planteadas sobre   el tema. 
+El estudiante puede con precisión contestar  la mayoría de las preguntas planteadas sobre  el tema. 
+El estudiante puede  con precisión contestar unas pocas preguntas plateadas sobre el tema por  sus compañeros. 
+El estudiante no puede contestar las preguntas planteadas sobre  el tema. 
+      
+Presentación personal El estudiante presenta un atuendo formal. 
+El estudiante presenta un atuendo más o menos formal 
+El estudiante presenta un atuendo nada formal 
+El estudiante se presenta de forma desordenada. 
+      
+
+
+--- PAGE 13 ---
+19  
+RÚBRICA DE EVALUACIÓN SISTEMA (50%)  ASPECTO EVALUADO PORCENTAJE  NOTA 
+El diseño de interfaces corresponde al análisis y modelado realizado 
+10%    
+Muestran una imagen por cada una de las pantallas que mostrará el sistema durante la ejecución de los casos de uso. 
+20%    
+Cada interfaz indica todo lo que verá el durante su interacción con el sistema. 
+5%    
+En el sistema se toman en cuenta todas las restricciones necesarias para el software que están relacionadas con seguridad, calidad y manejo de errores 
+20    
+El software cumple con todos los requerimientos, sin fallas o problemas en su operación. 
+35%    
+Presenta un avance del 50% 10%    
+NOTA DE SOFTWARE 100%    
+
+
+--- PAGE 14 ---
+ 
+    EXPERIENCIA DE APRENDIZAJE 2  PROYECTO FASE 3 (20%)  Agrupamientos: 4-5 personas  Fecha de entrega y defensa: 04 de junio    Tiempo estimado para el desarrollo de la actividad: 15 días                       
+
+
+
+--- PAGE 15 ---
+ 
+Análisis y diseño de sistemas Proyecto de cátedra, Fase 3, (Anexo 5)   
+  • El proyecto se presentará en grupos de cuatro personas como mínimo y un máximo de cinco. • Los trabajos extemporáneos, quedan a discreción del docente recibirlos; en todo caso, sujeto a la correspondiente justificación y sujetos a la nueva ponderación. • El plagio constituye una falta muy grave en el proceso de formación de los estudiantes, por tanto, este tipo de accione, serán penalizadas con la anulación del proyecto, perdiendo el estudiante el derecho a una apelación y/o reevaluación de dicha actividad. • Todos los archivos utilizados que conformen el proyecto deben comprimirse en una carpeta con extensión .zip o .rar y deberán enviarse mediante el enlace habilitado por su docente en el aula virtual.    
+  PROPÓSITOS ü Utilizar las Técnicas de Diseño UML para el Modelado de Sistemas Orientados a Objetos. ü Aplicar Scrum como metodología ágil para la gestión de las tareas y avances del proyecto hasta su culminación. ü Desarrollar el  sistema informático partiendo del análisis y diseño previo 
+Consideraciones del proyecto general 
+Especificaciones del proyecto fase 3 
+
+
+
+--- PAGE 16 ---
+ 
+a la programación.   FORMATO DE PRESENTACION Y DEFENSA ü La presentación es por equipo de trabajo ü La defensa será de manera individual.   PRESENTACION 1. Demostración de la aplicación terminada y funcionando sin errores, completamente amigable con el usuario. 2. Presentación del tablero en Trello, donde se demuestre la aplicación de scrum en la gestión de tareas para la realización del sistema: • Product backlog • Cada uno de los sprint con sus historias de usuario y sus respectivas estimaciones para cada una de ellas • Grafica burndown • Demostración de la utilización de GitHub.  RÚBRICA DE EVALUACIÓN  ASPECTO EVALUADO PORCENTA JE ¿SE APLICO? NOTA 
+Aplicación de GitHub como controlador de versiones 10%    Diseño amigable, responsivo de todas las interfaces del sistema 10%    Mostrar la aplicación finalizada funcionando sin errores 30%    Lógica de la aplicación (Clases, Objetos, Funciones, MVC). 10%    Captura y Validación de datos. 15%    Aplicación de Scrum con Trello para el desarrollo del sistema 25%     
