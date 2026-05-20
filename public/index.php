@@ -132,7 +132,7 @@ function layout(string $title, callable $content): void
                     </div>
                     <a class="btn btn-sm btn-outline-light mt-3" href="?r=logout">Cerrar sesión</a>
                 </aside>
-                <main class="col-md-10 p-4">
+                <main class="col-md-10 p-4" id="app-main">
                     <?php if ($flash): ?>
                         <div class="alert alert-<?= h($flash['type']) ?> no-print"><?= h($flash['message']) ?></div>
                     <?php endif; ?>
