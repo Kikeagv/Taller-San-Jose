@@ -143,7 +143,7 @@ function layout(string $title, callable $content): void
     <?php else: ?>
         <?php $content(); ?>
     <?php endif; ?>
-    <script src="assets/js/app.js"></script>
+    <script src="assets/js/app.js?v=<?= filemtime(__DIR__ . '/assets/js/app.js') ?>"></script>
     </body>
     </html>
     <?php
@@ -156,6 +156,10 @@ function table_empty(int $colspan, string $message = 'No hay registros para most
 
 function login_page(): void
 {
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && current_user()) {
+        redirect('dashboard');
+    }
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $correo = trim((string)post('correo'));
         $password = (string)post('password');
@@ -177,10 +181,10 @@ function login_page(): void
     layout('Iniciar sesión', function () {
         $flash = flash();
         ?>
-        <div class="container py-5">
+        <div class="container login-shell py-5">
             <div class="row justify-content-center">
                 <div class="col-md-5 col-lg-4">
-                    <div class="content-card p-4">
+                    <div class="content-card login-card p-4 pt-5">
                         <h1 class="h4 mb-1">Taller Mecánico San José</h1>
                         <p class="text-muted mb-4">Sistema de gestión de inventario</p>
                         <?php if ($flash): ?>
@@ -188,12 +192,12 @@ function login_page(): void
                         <?php endif; ?>
                         <form method="post">
                             <div class="mb-3">
-                                <label class="form-label">Correo</label>
-                                <input class="form-control" type="email" name="correo" required autofocus>
+                                <label class="form-label" for="login-correo">Correo</label>
+                                <input class="form-control" id="login-correo" type="email" name="correo" required autofocus>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Contraseña</label>
-                                <input class="form-control" type="password" name="password" required>
+                                <label class="form-label" for="login-password">Contraseña</label>
+                                <input class="form-control" id="login-password" type="password" name="password" required>
                             </div>
                             <button class="btn btn-success w-100">Ingresar</button>
                         </form>
@@ -211,10 +215,23 @@ function dashboard_page(): void
     require_auth();
     $stats = [
         'Repuestos activos' => scalar('SELECT COUNT(*) FROM repuestos WHERE estado = 1'),
-        'Bajo stock mínimo' => scalar('SELECT COUNT(*) FROM repuestos WHERE estado = 1 AND stock_actual <= stock_minimo'),
-        'Compras pendientes' => scalar("SELECT COUNT(*) FROM compras WHERE estado = 'pendiente'"),
         'Clientes activos' => scalar('SELECT COUNT(*) FROM clientes WHERE estado = 1'),
     ];
+    $lowStockParts = query(
+        "SELECT codigo, nombre, stock_actual, stock_minimo, ubicacion
+         FROM repuestos
+         WHERE estado = 1 AND stock_actual <= stock_minimo
+         ORDER BY stock_actual ASC, nombre ASC
+         LIMIT 5"
+    )->fetchAll();
+    $pendingPurchases = query(
+        "SELECT c.id_compra, c.fecha_compra, c.total_estimado, p.nombre proveedor
+         FROM compras c
+         JOIN proveedores p ON p.id_proveedor = c.id_proveedor
+         WHERE c.estado = 'pendiente'
+         ORDER BY c.fecha_compra DESC, c.id_compra DESC
+         LIMIT 5"
+    )->fetchAll();
     $movements = query(
         "SELECT m.*, r.nombre repuesto, u.nombre usuario
          FROM movimientos_inventario m
@@ -223,7 +240,7 @@ function dashboard_page(): void
          ORDER BY m.fecha_movimiento DESC LIMIT 5"
     )->fetchAll();
 
-    layout('Dashboard', function () use ($stats, $movements) {
+    layout('Dashboard', function () use ($stats, $lowStockParts, $pendingPurchases, $movements) {
         ?>
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
@@ -233,13 +250,52 @@ function dashboard_page(): void
         </div>
         <div class="row g-3 mb-4">
             <?php foreach ($stats as $label => $value): ?>
-                <div class="col-md-3">
+                <div class="col-md-6">
                     <div class="content-card stat-card p-3">
                         <div class="text-muted small"><?= h($label) ?></div>
                         <div class="display-6 fw-semibold"><?= h((string)$value) ?></div>
                     </div>
                 </div>
             <?php endforeach; ?>
+        </div>
+        <div class="content-card p-3 mb-4">
+            <h2 class="h5 mb-3">Bajo stock mínimo</h2>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead><tr><th>Código</th><th>Repuesto</th><th>Stock</th><th>Mínimo</th><th>Ubicación</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($lowStockParts as $row): ?>
+                        <tr>
+                            <td><?= h($row['codigo']) ?></td>
+                            <td><?= h($row['nombre']) ?></td>
+                            <td><span class="badge badge-stock-low"><?= h((string)$row['stock_actual']) ?></span></td>
+                            <td><?= h((string)$row['stock_minimo']) ?></td>
+                            <td><?= h($row['ubicacion']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (!$lowStockParts) table_empty(5, 'No hay repuestos bajo stock mínimo.'); ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="content-card p-3 mb-4">
+            <h2 class="h5 mb-3">Compras pendientes</h2>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead><tr><th>#</th><th>Fecha</th><th>Proveedor</th><th>Total</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($pendingPurchases as $row): ?>
+                        <tr>
+                            <td><?= h((string)$row['id_compra']) ?></td>
+                            <td><?= h($row['fecha_compra']) ?></td>
+                            <td><?= h($row['proveedor']) ?></td>
+                            <td>$<?= number_format((float)$row['total_estimado'], 2) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (!$pendingPurchases) table_empty(4, 'No hay compras pendientes.'); ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
         <div class="content-card p-3">
             <h2 class="h5 mb-3">Últimos movimientos</h2>
@@ -719,7 +775,8 @@ function compras_page(): void
 
         $proveedores = query('SELECT id_proveedor, nombre FROM proveedores WHERE estado = 1 ORDER BY nombre')->fetchAll();
         $repuestos = query('SELECT id_repuesto, codigo, nombre FROM repuestos WHERE estado = 1 ORDER BY nombre')->fetchAll();
-        layout('Nueva compra', function () use ($proveedores, $repuestos) {
+        $lineCount = max(1, min(10, (int)($_GET['lines'] ?? 1)));
+        layout('Nueva compra', function () use ($proveedores, $repuestos, $lineCount) {
             ?>
             <h1 class="h3 mb-3">Nueva compra</h1>
             <div class="content-card p-4">
@@ -730,15 +787,15 @@ function compras_page(): void
                         <div class="col-md-4"><label class="form-label">Observaciones</label><input class="form-control" name="observaciones"></div>
                     </div>
                     <table class="table">
-                        <thead><tr><th>Repuesto</th><th>Cantidad</th><th>Precio unitario</th></tr></thead>
+                        <thead><tr><th>Repuesto</th><th>Cantidad</th><th>Precio unitario</th><th></th></tr></thead>
                         <tbody data-compra-rows>
-                            <?php for ($i = 0; $i < 3; $i++): ?>
-                                <tr><td><select class="form-select" name="id_repuesto[]"><?php foreach ($repuestos as $r): ?><option value="<?= (int)$r['id_repuesto'] ?>"><?= h($r['codigo'] . ' - ' . $r['nombre']) ?></option><?php endforeach; ?></select></td><td><input class="form-control" type="number" min="1" name="cantidad[]"></td><td><input class="form-control" type="number" step="0.01" min="0" name="precio_unitario[]"></td></tr>
+                            <?php for ($i = 0; $i < $lineCount; $i++): ?>
+                                <tr data-compra-row><td><select class="form-select" name="id_repuesto[]"><?php foreach ($repuestos as $r): ?><option value="<?= (int)$r['id_repuesto'] ?>"><?= h($r['codigo'] . ' - ' . $r['nombre']) ?></option><?php endforeach; ?></select></td><td><input class="form-control" type="number" min="1" name="cantidad[]"></td><td><input class="form-control" type="number" step="0.01" min="0" name="precio_unitario[]"></td><td class="text-end"><?php if ($lineCount > 1): ?><a class="btn btn-outline-danger btn-sm" href="?r=compras&action=form&lines=<?= $lineCount - 1 ?>">Eliminar</a><?php endif; ?></td></tr>
                             <?php endfor; ?>
                         </tbody>
                     </table>
-                    <template data-compra-template><tr><td><select class="form-select" name="id_repuesto[]"><?php foreach ($repuestos as $r): ?><option value="<?= (int)$r['id_repuesto'] ?>"><?= h($r['codigo'] . ' - ' . $r['nombre']) ?></option><?php endforeach; ?></select></td><td><input class="form-control" type="number" min="1" name="cantidad[]"></td><td><input class="form-control" type="number" step="0.01" min="0" name="precio_unitario[]"></td></tr></template>
-                    <button type="button" class="btn btn-outline-secondary" data-add-compra-row>Agregar línea</button>
+                    <template data-compra-template><tr data-compra-row><td><select class="form-select" name="id_repuesto[]"><?php foreach ($repuestos as $r): ?><option value="<?= (int)$r['id_repuesto'] ?>"><?= h($r['codigo'] . ' - ' . $r['nombre']) ?></option><?php endforeach; ?></select></td><td><input class="form-control" type="number" min="1" name="cantidad[]"></td><td><input class="form-control" type="number" step="0.01" min="0" name="precio_unitario[]"></td><td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-compra-row>Eliminar</button></td></tr></template>
+                    <a class="btn btn-outline-secondary" href="?r=compras&action=form&lines=<?= $lineCount + 1 ?>">Agregar línea</a>
                     <button class="btn btn-success">Guardar compra</button>
                     <a class="btn btn-outline-secondary" href="?r=compras">Cancelar</a>
                 </form>
