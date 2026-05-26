@@ -213,10 +213,6 @@ function login_page(): void
 function dashboard_page(): void
 {
     require_auth();
-    $stats = [
-        'Repuestos activos' => scalar('SELECT COUNT(*) FROM repuestos WHERE estado = 1'),
-        'Clientes activos' => scalar('SELECT COUNT(*) FROM clientes WHERE estado = 1'),
-    ];
     $lowStockParts = query(
         "SELECT codigo, nombre, stock_actual, stock_minimo, ubicacion
          FROM repuestos
@@ -240,7 +236,7 @@ function dashboard_page(): void
          ORDER BY m.fecha_movimiento DESC LIMIT 5"
     )->fetchAll();
 
-    layout('Dashboard', function () use ($stats, $lowStockParts, $pendingPurchases, $movements) {
+    layout('Dashboard', function () use ($lowStockParts, $pendingPurchases, $movements) {
         ?>
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
@@ -248,18 +244,8 @@ function dashboard_page(): void
                 <p class="text-muted mb-0">Resumen operativo del inventario.</p>
             </div>
         </div>
-        <div class="row g-3 mb-4">
-            <?php foreach ($stats as $label => $value): ?>
-                <div class="col-md-6">
-                    <div class="content-card stat-card p-3">
-                        <div class="text-muted small"><?= h($label) ?></div>
-                        <div class="display-6 fw-semibold"><?= h((string)$value) ?></div>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
         <div class="content-card p-3 mb-4">
-            <h2 class="h5 mb-3">Bajo stock mínimo</h2>
+            <h2 class="h5 mb-3">Stock bajo</h2>
             <div class="table-responsive">
                 <table class="table align-middle">
                     <thead><tr><th>Código</th><th>Repuesto</th><th>Stock</th><th>Mínimo</th><th>Ubicación</th></tr></thead>

@@ -94,18 +94,7 @@ h2,
   overflow: hidden;
 }
 
-.stat-card {
-  align-items: center;
-  border-left: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 116px;
-  text-align: center;
-}
-
-.display-6,
-.stat-card .display-6 {
+.display-6 {
   font-variant-numeric: tabular-nums;
 }
 
