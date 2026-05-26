@@ -1,6 +1,6 @@
 # Sistema de Gestión de Inventario - Taller Mecánico San José
 
-Aplicación web construida para el avance funcional de Fase 2 de Análisis y Diseño de Sistemas.
+Aplicación web construida como entrega funcional final para Análisis y Diseño de Sistemas.
 
 ## Stack
 
@@ -24,6 +24,16 @@ mysql -u root -p taller_san_jose < database/seed.sql
 ```
 
 3. Ajuste credenciales en `config/database.php` si su usuario de MySQL no es `root` sin contraseña.
+   También puede usar variables de entorno:
+
+```bash
+export DB_HOST=127.0.0.1
+export DB_PORT=3306
+export DB_DATABASE=taller_san_jose
+export DB_USERNAME=root
+export DB_PASSWORD='123456..'
+export APP_TIMEZONE=America/El_Salvador
+```
 
 4. Levante el servidor desde la carpeta `public`:
 
@@ -55,14 +65,16 @@ password
 ## Funcionalidad incluida
 
 - Login con sesiones y contraseña cifrada.
-- Dashboard con indicadores desde MySQL.
+- Dashboard operativo desde MySQL.
 - CRUD de repuestos.
 - Entradas y salidas de inventario con validación de stock.
 - CRUD de proveedores.
 - Compras con detalle y recepción de mercadería.
 - CRUD de clientes.
 - Vehículos asociados a clientes.
-- Reportes imprimibles.
+- Servicios de taller por vehículo, con repuestos utilizados y descuento automático de inventario.
+- Trazabilidad de salidas de inventario generadas desde servicios.
+- Reportes imprimibles y exportables a CSV.
 - Datos semilla con más de 50 registros para pruebas.
 
 ## Capturas requeridas para el documento
@@ -76,5 +88,6 @@ Cuando la app esté corriendo, capture:
 5. Movimientos de inventario
 6. Proveedores
 7. Compras
-8. Clientes y vehículos
-9. Reportes
+8. Servicios
+9. Clientes y vehículos
+10. Reportes

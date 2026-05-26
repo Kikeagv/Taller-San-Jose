@@ -47,6 +47,43 @@ function initAppInteractions() {
 
     updateRemoveButtons();
   }
+
+  const addServiceRowButton = document.querySelector('[data-add-service-row]');
+  const serviceRowsBody = document.querySelector('[data-service-rows]');
+  if (addServiceRowButton && serviceRowsBody && serviceRowsBody.dataset.serviceRowsBound !== 'true') {
+    serviceRowsBody.dataset.serviceRowsBound = 'true';
+
+    const updateServiceRemoveButtons = () => {
+      const rows = serviceRowsBody.querySelectorAll('[data-service-row]');
+      rows.forEach((row) => {
+        const removeButton = row.querySelector('[data-remove-service-row]');
+        if (removeButton) {
+          removeButton.hidden = rows.length <= 1;
+          removeButton.disabled = rows.length <= 1;
+        }
+      });
+    };
+
+    addServiceRowButton.addEventListener('click', () => {
+      const template = document.querySelector('[data-service-template]');
+      const clone = template.content.cloneNode(true);
+      serviceRowsBody.appendChild(clone);
+      updateServiceRemoveButtons();
+    });
+
+    serviceRowsBody.addEventListener('click', (event) => {
+      const removeButton = event.target.closest('[data-remove-service-row]');
+      if (!removeButton) return;
+
+      const rows = serviceRowsBody.querySelectorAll('[data-service-row]');
+      if (rows.length <= 1) return;
+
+      removeButton.closest('[data-service-row]').remove();
+      updateServiceRemoveButtons();
+    });
+
+    updateServiceRemoveButtons();
+  }
 }
 
 function setActiveSidebarLink(url) {

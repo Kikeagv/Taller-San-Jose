@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 session_start();
+date_default_timezone_set(getenv('APP_TIMEZONE') ?: 'America/El_Salvador');
 
 function db(): PDO
 {
@@ -31,6 +32,12 @@ function db(): PDO
 function h(?string $value): string
 {
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
+
+function excerpt(?string $value, int $limit = 60): string
+{
+    $text = trim((string)$value);
+    return strlen($text) > $limit ? substr($text, 0, $limit - 3) . '...' : $text;
 }
 
 function route(): string
@@ -101,6 +108,7 @@ function layout(string $title, callable $content): void
         'movimientos' => 'Movimientos',
         'proveedores' => 'Proveedores',
         'compras' => 'Compras',
+        'servicios' => 'Servicios',
         'clientes' => 'Clientes',
         'reportes' => 'Reportes',
     ];
@@ -152,6 +160,19 @@ function layout(string $title, callable $content): void
 function table_empty(int $colspan, string $message = 'No hay registros para mostrar.'): void
 {
     echo '<tr><td colspan="' . $colspan . '" class="text-center text-muted py-4">' . h($message) . '</td></tr>';
+}
+
+function csv_response(string $filename, array $headers, array $rows, callable $map): never
+{
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    $out = fopen('php://output', 'w');
+    fputcsv($out, $headers, ',', '"', '\\');
+    foreach ($rows as $row) {
+        fputcsv($out, array_map('strval', $map($row)), ',', '"', '\\');
+    }
+    fclose($out);
+    exit;
 }
 
 function login_page(): void
@@ -685,6 +706,215 @@ function vehiculos_page(): void
     });
 }
 
+function servicios_page(): void
+{
+    require_auth();
+    $action = $_GET['action'] ?? 'index';
+
+    if ($action === 'view') {
+        $id = get_int('id');
+        $service = query(
+            "SELECT s.*, v.placa, v.marca, v.modelo, c.nombre cliente
+             FROM servicios s
+             JOIN vehiculos v ON v.id_vehiculo = s.id_vehiculo
+             JOIN clientes c ON c.id_cliente = v.id_cliente
+             WHERE s.id_servicio = ?",
+            [$id]
+        )->fetch();
+        if (!$service) {
+            flash('Servicio no encontrado.', 'danger');
+            redirect('servicios');
+        }
+        $details = query(
+            "SELECT ds.*, r.codigo, r.nombre
+             FROM detalle_servicio_repuesto ds
+             JOIN repuestos r ON r.id_repuesto = ds.id_repuesto
+             WHERE ds.id_servicio = ?
+             ORDER BY r.nombre",
+            [$id]
+        )->fetchAll();
+
+        layout('Detalle de servicio', function () use ($service, $details) {
+            ?>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h1 class="h3 mb-1">Servicio #<?= (int)$service['id_servicio'] ?></h1>
+                    <p class="text-muted mb-0"><?= h($service['cliente']) ?> · <?= h($service['placa']) ?> · <?= h($service['marca'] . ' ' . $service['modelo']) ?></p>
+                </div>
+                <a class="btn btn-outline-secondary" href="?r=servicios">Volver</a>
+            </div>
+            <div class="content-card p-4 mb-4">
+                <div class="row g-3">
+                    <div class="col-md-3"><div class="text-muted small">Fecha</div><div class="fw-semibold"><?= h($service['fecha_servicio']) ?></div></div>
+                    <div class="col-md-3"><div class="text-muted small">Kilometraje</div><div class="fw-semibold"><?= h((string)$service['kilometraje']) ?></div></div>
+                    <div class="col-md-6"><div class="text-muted small">Observaciones</div><div><?= h($service['observaciones'] ?: 'Sin observaciones') ?></div></div>
+                    <div class="col-12"><div class="text-muted small">Trabajo realizado</div><div><?= nl2br(h($service['descripcion'])) ?></div></div>
+                </div>
+            </div>
+            <div class="content-card p-3 table-responsive">
+                <h2 class="h5 mb-3">Repuestos utilizados</h2>
+                <table class="table align-middle">
+                    <thead><tr><th>Código</th><th>Repuesto</th><th>Cantidad</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($details as $row): ?>
+                        <tr><td><?= h($row['codigo']) ?></td><td><?= h($row['nombre']) ?></td><td><?= (int)$row['cantidad_usada'] ?></td></tr>
+                    <?php endforeach; ?>
+                    <?php if (!$details) table_empty(3, 'No se registraron repuestos para este servicio.'); ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php
+        });
+        return;
+    }
+
+    if ($action === 'form') {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $idVehiculo = (int)post('id_vehiculo');
+            $fecha = (string)post('fecha_servicio');
+            $descripcion = trim((string)post('descripcion'));
+            $kilometraje = max(0, (int)post('kilometraje', 0));
+            $observaciones = trim((string)post('observaciones'));
+            $repuestos = $_POST['id_repuesto'] ?? [];
+            $cantidades = $_POST['cantidad_usada'] ?? [];
+
+            if ($idVehiculo <= 0 || $fecha === '' || $descripcion === '') {
+                flash('Vehículo, fecha y descripción son obligatorios.', 'danger');
+                redirect('servicios&action=form');
+            }
+
+            $validRows = [];
+            foreach ($repuestos as $i => $idRepuesto) {
+                $idRepuesto = (int)$idRepuesto;
+                $cantidad = (int)($cantidades[$i] ?? 0);
+                if ($idRepuesto > 0 && $cantidad > 0) {
+                    $validRows[] = [$idRepuesto, $cantidad];
+                }
+            }
+
+            db()->beginTransaction();
+            try {
+                foreach ($validRows as [$idRepuesto, $cantidad]) {
+                    $stock = (int)scalar('SELECT stock_actual FROM repuestos WHERE id_repuesto = ? AND estado = 1 FOR UPDATE', [$idRepuesto]);
+                    if ($stock < $cantidad) {
+                        throw new RuntimeException('Stock insuficiente.');
+                    }
+                }
+
+                query('INSERT INTO servicios (id_vehiculo, fecha_servicio, descripcion, kilometraje, observaciones) VALUES (?,?,?,?,?)', [
+                    $idVehiculo, $fecha, $descripcion, $kilometraje ?: null, $observaciones
+                ]);
+                $idServicio = (int)db()->lastInsertId();
+
+                foreach ($validRows as [$idRepuesto, $cantidad]) {
+                    query('INSERT INTO detalle_servicio_repuesto (id_servicio, id_repuesto, cantidad_usada) VALUES (?,?,?)', [$idServicio, $idRepuesto, $cantidad]);
+                    query('UPDATE repuestos SET stock_actual = stock_actual - ? WHERE id_repuesto = ?', [$cantidad, $idRepuesto]);
+                    query('INSERT INTO movimientos_inventario (id_repuesto, id_usuario, tipo_movimiento, cantidad, motivo, referencia) VALUES (?,?,?,?,?,?)', [
+                        $idRepuesto, current_user()['id_usuario'], 'salida', $cantidad, 'Uso en servicio de taller', 'Servicio #' . $idServicio
+                    ]);
+                }
+
+                db()->commit();
+                flash('Servicio registrado e inventario actualizado.');
+                redirect('servicios');
+            } catch (Throwable $e) {
+                db()->rollBack();
+                flash('No se pudo registrar el servicio. Revise stock y datos ingresados.', 'danger');
+            }
+        }
+
+        $vehiculos = query(
+            "SELECT v.id_vehiculo, v.placa, v.marca, v.modelo, c.nombre cliente
+             FROM vehiculos v
+             JOIN clientes c ON c.id_cliente = v.id_cliente
+             WHERE v.estado = 1 AND c.estado = 1
+             ORDER BY c.nombre, v.placa"
+        )->fetchAll();
+        $repuestos = query('SELECT id_repuesto, codigo, nombre, stock_actual FROM repuestos WHERE estado = 1 ORDER BY nombre')->fetchAll();
+
+        layout('Nuevo servicio', function () use ($vehiculos, $repuestos) {
+            ?>
+            <h1 class="h3 mb-3">Nuevo servicio</h1>
+            <div class="content-card p-4">
+                <form method="post">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-5">
+                            <label class="form-label">Vehículo</label>
+                            <select class="form-select" name="id_vehiculo" required>
+                                <?php foreach ($vehiculos as $v): ?>
+                                    <option value="<?= (int)$v['id_vehiculo'] ?>"><?= h($v['cliente'] . ' · ' . $v['placa'] . ' · ' . $v['marca'] . ' ' . $v['modelo']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3"><label class="form-label">Fecha</label><input class="form-control" type="date" name="fecha_servicio" value="<?= date('Y-m-d') ?>" required></div>
+                        <div class="col-md-4"><label class="form-label">Kilometraje</label><input class="form-control" type="number" min="0" name="kilometraje"></div>
+                        <div class="col-12"><label class="form-label">Descripción del trabajo</label><textarea class="form-control" name="descripcion" rows="3" required></textarea></div>
+                        <div class="col-12"><label class="form-label">Observaciones</label><input class="form-control" name="observaciones"></div>
+                    </div>
+                    <h2 class="h5 mb-3">Repuestos utilizados</h2>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead><tr><th>Repuesto</th><th>Cantidad usada</th><th></th></tr></thead>
+                            <tbody data-service-rows>
+                                <tr data-service-row>
+                                    <td><select class="form-select" name="id_repuesto[]"><option value="">Sin repuesto</option><?php foreach ($repuestos as $r): ?><option value="<?= (int)$r['id_repuesto'] ?>"><?= h($r['codigo'] . ' - ' . $r['nombre'] . ' (stock: ' . $r['stock_actual'] . ')') ?></option><?php endforeach; ?></select></td>
+                                    <td><input class="form-control" type="number" min="1" name="cantidad_usada[]"></td>
+                                    <td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-service-row hidden>Eliminar</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <template data-service-template><tr data-service-row><td><select class="form-select" name="id_repuesto[]"><option value="">Sin repuesto</option><?php foreach ($repuestos as $r): ?><option value="<?= (int)$r['id_repuesto'] ?>"><?= h($r['codigo'] . ' - ' . $r['nombre'] . ' (stock: ' . $r['stock_actual'] . ')') ?></option><?php endforeach; ?></select></td><td><input class="form-control" type="number" min="1" name="cantidad_usada[]"></td><td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-service-row>Eliminar</button></td></tr></template>
+                    <button type="button" class="btn btn-outline-secondary" data-add-service-row>Agregar repuesto</button>
+                    <button class="btn btn-success">Guardar servicio</button>
+                    <a class="btn btn-outline-secondary" href="?r=servicios">Cancelar</a>
+                </form>
+            </div>
+            <?php
+        });
+        return;
+    }
+
+    $rows = query(
+        "SELECT s.*, v.placa, v.marca, v.modelo, c.nombre cliente,
+                COUNT(ds.id_detalle_servicio) repuestos_usados
+         FROM servicios s
+         JOIN vehiculos v ON v.id_vehiculo = s.id_vehiculo
+         JOIN clientes c ON c.id_cliente = v.id_cliente
+         LEFT JOIN detalle_servicio_repuesto ds ON ds.id_servicio = s.id_servicio
+         GROUP BY s.id_servicio, v.placa, v.marca, v.modelo, c.nombre
+         ORDER BY s.fecha_servicio DESC, s.id_servicio DESC"
+    )->fetchAll();
+
+    layout('Servicios', function () use ($rows) {
+        ?>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div><h1 class="h3 mb-1">Servicios</h1><p class="text-muted mb-0">Órdenes de taller y repuestos utilizados.</p></div>
+            <a class="btn btn-success" href="?r=servicios&action=form">Nuevo servicio</a>
+        </div>
+        <div class="content-card p-3 table-responsive">
+            <table class="table align-middle">
+                <thead><tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Vehículo</th><th>Trabajo</th><th>Repuestos</th><th></th></tr></thead>
+                <tbody>
+                <?php foreach ($rows as $row): ?>
+                    <tr>
+                        <td><?= (int)$row['id_servicio'] ?></td>
+                        <td><?= h($row['fecha_servicio']) ?></td>
+                        <td><?= h($row['cliente']) ?></td>
+                        <td><?= h($row['placa'] . ' · ' . $row['marca'] . ' ' . $row['modelo']) ?></td>
+                        <td><?= h(excerpt($row['descripcion'])) ?></td>
+                        <td><?= (int)$row['repuestos_usados'] ?></td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="?r=servicios&action=view&id=<?= (int)$row['id_servicio'] ?>">Ver</a></td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php if (!$rows) table_empty(7); ?>
+                </tbody>
+            </table>
+        </div>
+        <?php
+    });
+}
+
 function compras_page(): void
 {
     require_auth();
@@ -781,7 +1011,7 @@ function compras_page(): void
                         </tbody>
                     </table>
                     <template data-compra-template><tr data-compra-row><td><select class="form-select" name="id_repuesto[]"><?php foreach ($repuestos as $r): ?><option value="<?= (int)$r['id_repuesto'] ?>"><?= h($r['codigo'] . ' - ' . $r['nombre']) ?></option><?php endforeach; ?></select></td><td><input class="form-control" type="number" min="1" name="cantidad[]"></td><td><input class="form-control" type="number" step="0.01" min="0" name="precio_unitario[]"></td><td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-compra-row>Eliminar</button></td></tr></template>
-                    <a class="btn btn-outline-secondary" href="?r=compras&action=form&lines=<?= $lineCount + 1 ?>">Agregar línea</a>
+                    <button type="button" class="btn btn-outline-secondary" data-add-compra-row>Agregar línea</button>
                     <button class="btn btn-success">Guardar compra</button>
                     <a class="btn btn-outline-secondary" href="?r=compras">Cancelar</a>
                 </form>
@@ -814,26 +1044,54 @@ function reportes_page(): void
     $bajoStock = query('SELECT * FROM repuestos WHERE estado = 1 AND stock_actual <= stock_minimo ORDER BY nombre')->fetchAll();
     $compras = query("SELECT p.nombre proveedor, COUNT(*) compras, SUM(c.total_estimado) total FROM compras c JOIN proveedores p ON p.id_proveedor = c.id_proveedor GROUP BY p.id_proveedor, p.nombre ORDER BY total DESC")->fetchAll();
     $clientes = query("SELECT c.nombre, c.telefono, COUNT(v.id_vehiculo) vehiculos FROM clientes c LEFT JOIN vehiculos v ON v.id_cliente = c.id_cliente AND v.estado = 1 WHERE c.estado = 1 GROUP BY c.id_cliente, c.nombre, c.telefono ORDER BY c.nombre")->fetchAll();
+    $servicios = query(
+        "SELECT s.id_servicio, s.fecha_servicio, c.nombre cliente, v.placa,
+                CONCAT(v.marca, ' ', v.modelo) vehiculo, s.descripcion,
+                COUNT(ds.id_detalle_servicio) repuestos
+         FROM servicios s
+         JOIN vehiculos v ON v.id_vehiculo = s.id_vehiculo
+         JOIN clientes c ON c.id_cliente = v.id_cliente
+         LEFT JOIN detalle_servicio_repuesto ds ON ds.id_servicio = s.id_servicio
+         GROUP BY s.id_servicio, s.fecha_servicio, c.nombre, v.placa, v.marca, v.modelo, s.descripcion
+         ORDER BY s.fecha_servicio DESC, s.id_servicio DESC"
+    )->fetchAll();
 
-    layout('Reportes', function () use ($inventario, $bajoStock, $compras, $clientes) {
+    if (($_GET['action'] ?? '') === 'export') {
+        match ($_GET['type'] ?? '') {
+            'inventario' => csv_response('inventario.csv', ['Código','Nombre','Stock','Mínimo','Ubicación'], $inventario, fn($r) => [$r['codigo'], $r['nombre'], $r['stock_actual'], $r['stock_minimo'], $r['ubicacion']]),
+            'stock_bajo' => csv_response('stock_bajo.csv', ['Código','Nombre','Stock','Mínimo'], $bajoStock, fn($r) => [$r['codigo'], $r['nombre'], $r['stock_actual'], $r['stock_minimo']]),
+            'compras' => csv_response('compras_por_proveedor.csv', ['Proveedor','Compras','Total'], $compras, fn($r) => [$r['proveedor'], $r['compras'], number_format((float)$r['total'], 2, '.', '')]),
+            'clientes' => csv_response('clientes_vehiculos.csv', ['Cliente','Teléfono','Vehículos'], $clientes, fn($r) => [$r['nombre'], $r['telefono'], $r['vehiculos']]),
+            'servicios' => csv_response('servicios.csv', ['#','Fecha','Cliente','Placa','Vehículo','Trabajo','Repuestos'], $servicios, fn($r) => [$r['id_servicio'], $r['fecha_servicio'], $r['cliente'], $r['placa'], $r['vehiculo'], $r['descripcion'], $r['repuestos']]),
+            default => redirect('reportes'),
+        };
+    }
+
+    layout('Reportes', function () use ($inventario, $bajoStock, $compras, $clientes, $servicios) {
         ?>
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h1 class="h3 mb-0">Reportes</h1>
             <button class="btn btn-outline-secondary no-print" onclick="window.print()">Imprimir</button>
         </div>
-        <?php report_table('Inventario actual', ['Código','Nombre','Stock','Mínimo','Ubicación'], $inventario, fn($r) => [$r['codigo'], $r['nombre'], $r['stock_actual'], $r['stock_minimo'], $r['ubicacion']]); ?>
-        <?php report_table('Repuestos bajo stock mínimo', ['Código','Nombre','Stock','Mínimo'], $bajoStock, fn($r) => [$r['codigo'], $r['nombre'], $r['stock_actual'], $r['stock_minimo']]); ?>
-        <?php report_table('Compras por proveedor', ['Proveedor','Compras','Total'], $compras, fn($r) => [$r['proveedor'], $r['compras'], '$' . number_format((float)$r['total'], 2)]); ?>
-        <?php report_table('Clientes y vehículos', ['Cliente','Teléfono','Vehículos'], $clientes, fn($r) => [$r['nombre'], $r['telefono'], $r['vehiculos']]); ?>
+        <?php report_table('Inventario actual', ['Código','Nombre','Stock','Mínimo','Ubicación'], $inventario, fn($r) => [$r['codigo'], $r['nombre'], $r['stock_actual'], $r['stock_minimo'], $r['ubicacion']], 'inventario'); ?>
+        <?php report_table('Stock bajo', ['Código','Nombre','Stock','Mínimo'], $bajoStock, fn($r) => [$r['codigo'], $r['nombre'], $r['stock_actual'], $r['stock_minimo']], 'stock_bajo'); ?>
+        <?php report_table('Compras por proveedor', ['Proveedor','Compras','Total'], $compras, fn($r) => [$r['proveedor'], $r['compras'], '$' . number_format((float)$r['total'], 2)], 'compras'); ?>
+        <?php report_table('Servicios realizados', ['#','Fecha','Cliente','Placa','Vehículo','Trabajo','Repuestos'], $servicios, fn($r) => [$r['id_servicio'], $r['fecha_servicio'], $r['cliente'], $r['placa'], $r['vehiculo'], excerpt($r['descripcion'], 48), $r['repuestos']], 'servicios'); ?>
+        <?php report_table('Clientes y vehículos', ['Cliente','Teléfono','Vehículos'], $clientes, fn($r) => [$r['nombre'], $r['telefono'], $r['vehiculos']], 'clientes'); ?>
         <?php
     });
 }
 
-function report_table(string $title, array $headers, array $rows, callable $map): void
+function report_table(string $title, array $headers, array $rows, callable $map, ?string $exportType = null): void
 {
     ?>
     <div class="content-card p-3 table-responsive mb-4">
-        <h2 class="h5 mb-3"><?= h($title) ?></h2>
+        <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+            <h2 class="h5 mb-0"><?= h($title) ?></h2>
+            <?php if ($exportType): ?>
+                <a class="btn btn-sm btn-outline-secondary no-print" href="?r=reportes&action=export&type=<?= h($exportType) ?>">CSV</a>
+            <?php endif; ?>
+        </div>
         <table class="table table-sm align-middle">
             <thead><tr><?php foreach ($headers as $header): ?><th><?= h($header) ?></th><?php endforeach; ?></tr></thead>
             <tbody>
@@ -856,6 +1114,7 @@ try {
         'proveedores' => generic_crud('proveedores'),
         'clientes' => generic_crud('clientes'),
         'vehiculos' => vehiculos_page(),
+        'servicios' => servicios_page(),
         'compras' => compras_page(),
         'reportes' => reportes_page(),
         default => redirect('dashboard'),
