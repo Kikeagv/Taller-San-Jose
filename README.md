@@ -62,6 +62,17 @@ password
 | Recepción | recepcion@taller.test |
 | Propietario | propietario@taller.test |
 
+## Permisos por rol
+
+| Rol | Acceso principal |
+|---|---|
+| Administrador | Todas las secciones y acciones del sistema. |
+| Bodega | Dashboard, repuestos, movimientos, proveedores y compras. |
+| Recepción | Dashboard, clientes, vehículos y servicios de taller. |
+| Propietario | Dashboard y reportes en modo consulta/exportación. |
+
+El menú se ajusta automáticamente según el rol del usuario. Las rutas y acciones sensibles también se validan del lado del servidor.
+
 ## Funcionalidad incluida
 
 - Login con sesiones y contraseña cifrada.

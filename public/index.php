@@ -56,11 +56,98 @@ function current_user(): ?array
     return $_SESSION['user'] ?? null;
 }
 
+function user_role(): ?string
+{
+    return current_user()['rol'] ?? null;
+}
+
+function role_label(?string $role): string
+{
+    return [
+        'admin' => 'Administrador',
+        'bodega' => 'Bodega',
+        'recepcion' => 'Recepción',
+        'propietario' => 'Propietario',
+    ][$role] ?? 'Sin rol';
+}
+
+function permission_map(): array
+{
+    return [
+        'routes' => [
+            'dashboard' => ['admin', 'bodega', 'recepcion', 'propietario'],
+            'repuestos' => ['admin', 'bodega'],
+            'repuestos_form' => ['admin', 'bodega'],
+            'movimientos' => ['admin', 'bodega'],
+            'proveedores' => ['admin', 'bodega'],
+            'compras' => ['admin', 'bodega'],
+            'clientes' => ['admin', 'recepcion'],
+            'vehiculos' => ['admin', 'recepcion'],
+            'servicios' => ['admin', 'recepcion'],
+            'reportes' => ['admin', 'propietario'],
+        ],
+        'caps' => [
+            'repuestos.write' => ['admin', 'bodega'],
+            'movimientos.write' => ['admin', 'bodega'],
+            'proveedores.write' => ['admin', 'bodega'],
+            'compras.write' => ['admin', 'bodega'],
+            'clientes.write' => ['admin', 'recepcion'],
+            'vehiculos.write' => ['admin', 'recepcion'],
+            'servicios.write' => ['admin', 'recepcion'],
+            'reportes.export' => ['admin', 'propietario'],
+        ],
+    ];
+}
+
+function role_allowed(array $roles): bool
+{
+    $role = user_role();
+    return $role !== null && in_array($role, $roles, true);
+}
+
+function can_access_route(string $route): bool
+{
+    return role_allowed(permission_map()['routes'][$route] ?? []);
+}
+
+function can_do(string $capability): bool
+{
+    return role_allowed(permission_map()['caps'][$capability] ?? []);
+}
+
 function require_auth(): void
 {
     if (!current_user()) {
         redirect('login');
     }
+}
+
+function require_route_access(?string $route = null): void
+{
+    require_auth();
+    $route ??= route();
+    if (!can_access_route($route)) {
+        flash('No tiene permiso para acceder a esa sección.', 'danger');
+        redirect('dashboard');
+    }
+}
+
+function require_capability(string $capability, string $fallbackRoute = 'dashboard'): void
+{
+    require_auth();
+    if (!can_do($capability)) {
+        flash('No tiene permiso para realizar esa acción.', 'danger');
+        redirect($fallbackRoute);
+    }
+}
+
+function visible_nav(array $nav): array
+{
+    return array_filter(
+        $nav,
+        fn(string $label, string $route): bool => can_access_route($route),
+        ARRAY_FILTER_USE_BOTH
+    );
 }
 
 function flash(?string $message = null, string $type = 'success'): ?array
@@ -112,6 +199,7 @@ function layout(string $title, callable $content): void
         'clientes' => 'Clientes',
         'reportes' => 'Reportes',
     ];
+    $nav = $user ? visible_nav($nav) : $nav;
     ?>
     <!doctype html>
     <html lang="es">
@@ -136,7 +224,7 @@ function layout(string $title, callable $content): void
                     </nav>
                     <div class="mt-4 small text-white-50">
                         <?= h($user['nombre']) ?><br>
-                        Rol: <?= h($user['rol']) ?>
+                        Rol: <?= h(role_label($user['rol'])) ?>
                     </div>
                     <a class="btn btn-sm btn-outline-light mt-3" href="?r=logout">Cerrar sesión</a>
                 </aside>
@@ -233,7 +321,7 @@ function login_page(): void
 
 function dashboard_page(): void
 {
-    require_auth();
+    require_route_access('dashboard');
     $lowStockParts = query(
         "SELECT codigo, nombre, stock_actual, stock_minimo, ubicacion
          FROM repuestos
@@ -330,8 +418,9 @@ function dashboard_page(): void
 
 function repuestos_page(): void
 {
-    require_auth();
+    require_route_access('repuestos');
     if (($_GET['action'] ?? '') === 'delete') {
+        require_capability('repuestos.write', 'repuestos');
         $id = get_int('id');
         if ($id) {
             query('UPDATE repuestos SET estado = 0 WHERE id_repuesto = ?', [$id]);
@@ -349,10 +438,11 @@ function repuestos_page(): void
     $rows = query("SELECT * FROM repuestos $where ORDER BY nombre", $params)->fetchAll();
 
     layout('Repuestos', function () use ($rows, $q) {
+        $canWrite = can_do('repuestos.write');
         ?>
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div><h1 class="h3 mb-1">Repuestos</h1><p class="text-muted mb-0">Catálogo y existencias.</p></div>
-            <a class="btn btn-success" href="?r=repuestos_form">Nuevo repuesto</a>
+            <?php if ($canWrite): ?><a class="btn btn-success" href="?r=repuestos_form">Nuevo repuesto</a><?php endif; ?>
         </div>
         <form class="row g-2 mb-3 no-print">
             <input type="hidden" name="r" value="repuestos">
@@ -376,10 +466,12 @@ function repuestos_page(): void
                             <?php endif; ?>
                         </td>
                         <td>$<?= number_format((float)$row['precio_referencia'], 2) ?></td>
-                        <td class="text-end">
-                            <a class="btn btn-sm btn-outline-primary" href="?r=repuestos_form&id=<?= (int)$row['id_repuesto'] ?>">Editar</a>
-                            <a class="btn btn-sm btn-outline-danger" data-confirm="¿Desactivar repuesto?" href="?r=repuestos&action=delete&id=<?= (int)$row['id_repuesto'] ?>">Desactivar</a>
-                        </td>
+	                        <td class="text-end">
+	                            <?php if ($canWrite): ?>
+	                                <a class="btn btn-sm btn-outline-primary" href="?r=repuestos_form&id=<?= (int)$row['id_repuesto'] ?>">Editar</a>
+	                                <a class="btn btn-sm btn-outline-danger" data-confirm="¿Desactivar repuesto?" href="?r=repuestos&action=delete&id=<?= (int)$row['id_repuesto'] ?>">Desactivar</a>
+	                            <?php endif; ?>
+	                        </td>
                     </tr>
                 <?php endforeach; ?>
                 <?php if (!$rows) table_empty(7); ?>
@@ -392,7 +484,8 @@ function repuestos_page(): void
 
 function repuestos_form_page(): void
 {
-    require_auth();
+    require_route_access('repuestos_form');
+    require_capability('repuestos.write', 'repuestos');
     $id = get_int('id');
     $row = $id ? query('SELECT * FROM repuestos WHERE id_repuesto = ?', [$id])->fetch() : null;
 
@@ -448,8 +541,9 @@ function repuestos_form_page(): void
 
 function movimientos_page(): void
 {
-    require_auth();
+    require_route_access('movimientos');
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        require_capability('movimientos.write', 'movimientos');
         $idRepuesto = (int)post('id_repuesto');
         $tipo = (string)post('tipo_movimiento');
         $cantidad = (int)post('cantidad');
@@ -492,8 +586,10 @@ function movimientos_page(): void
     )->fetchAll();
 
     layout('Movimientos', function () use ($repuestos, $rows) {
+        $canWrite = can_do('movimientos.write');
         ?>
         <h1 class="h3 mb-3">Movimientos de inventario</h1>
+        <?php if ($canWrite): ?>
         <div class="content-card p-4 mb-4 no-print">
             <form method="post" class="row g-3">
                 <div class="col-md-4"><label class="form-label">Repuesto</label><select class="form-select" name="id_repuesto" required><?php foreach ($repuestos as $r): ?><option value="<?= (int)$r['id_repuesto'] ?>"><?= h($r['nombre']) ?> (stock: <?= (int)$r['stock_actual'] ?>)</option><?php endforeach; ?></select></div>
@@ -504,6 +600,7 @@ function movimientos_page(): void
                 <div class="col-12"><button class="btn btn-success">Registrar movimiento</button></div>
             </form>
         </div>
+        <?php endif; ?>
         <div class="content-card p-3 table-responsive">
             <table class="table align-middle">
                 <thead><tr><th>Fecha</th><th>Repuesto</th><th>Tipo</th><th>Cantidad</th><th>Motivo</th><th>Usuario</th></tr></thead>
@@ -521,7 +618,7 @@ function movimientos_page(): void
 
 function generic_crud(string $entity): void
 {
-    require_auth();
+    require_route_access($entity);
     $config = [
         'proveedores' => [
             'pk' => 'id_proveedor',
@@ -541,12 +638,14 @@ function generic_crud(string $entity): void
     $id = get_int('id');
 
     if ($action === 'delete' && $id) {
+        require_capability($entity . '.write', $entity);
         query("UPDATE $entity SET estado = 0 WHERE {$config['pk']} = ?", [$id]);
         flash($config['title'] . ': registro desactivado.');
         redirect($entity);
     }
 
     if ($action === 'form') {
+        require_capability($entity . '.write', $entity);
         $row = $id ? query("SELECT * FROM $entity WHERE {$config['pk']} = ?", [$id])->fetch() : null;
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $values = [];
@@ -599,10 +698,11 @@ function generic_crud(string $entity): void
     $rows = query("SELECT * FROM $entity $where ORDER BY nombre", $params)->fetchAll();
 
     layout($config['title'], function () use ($config, $rows, $q, $entity) {
+        $canWrite = can_do($entity . '.write');
         ?>
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h1 class="h3 mb-0"><?= h($config['title']) ?></h1>
-            <a class="btn btn-success" href="?r=<?= h($entity) ?>&action=form">Nuevo</a>
+            <?php if ($canWrite): ?><a class="btn btn-success" href="?r=<?= h($entity) ?>&action=form">Nuevo</a><?php endif; ?>
         </div>
         <form class="row g-2 mb-3 no-print"><input type="hidden" name="r" value="<?= h($entity) ?>"><div class="col-md-5"><input class="form-control" name="q" value="<?= h($q) ?>" placeholder="Buscar"></div><div class="col-auto"><button class="btn btn-outline-secondary">Buscar</button></div></form>
         <div class="content-card p-3 table-responsive">
@@ -613,9 +713,11 @@ function generic_crud(string $entity): void
                     <tr>
                         <?php foreach (array_keys($config['fields']) as $field): ?><td><?= h($row[$field]) ?></td><?php endforeach; ?>
                         <td class="text-end">
-                            <?php if ($entity === 'clientes'): ?><a class="btn btn-sm btn-outline-secondary" href="?r=vehiculos&id_cliente=<?= (int)$row['id_cliente'] ?>">Vehículos</a><?php endif; ?>
-                            <a class="btn btn-sm btn-outline-primary" href="?r=<?= h($entity) ?>&action=form&id=<?= (int)$row[$config['pk']] ?>">Editar</a>
-                            <a class="btn btn-sm btn-outline-danger" data-confirm="¿Desactivar registro?" href="?r=<?= h($entity) ?>&action=delete&id=<?= (int)$row[$config['pk']] ?>">Desactivar</a>
+	                            <?php if ($entity === 'clientes' && can_access_route('vehiculos')): ?><a class="btn btn-sm btn-outline-secondary" href="?r=vehiculos&id_cliente=<?= (int)$row['id_cliente'] ?>">Vehículos</a><?php endif; ?>
+	                            <?php if ($canWrite): ?>
+	                                <a class="btn btn-sm btn-outline-primary" href="?r=<?= h($entity) ?>&action=form&id=<?= (int)$row[$config['pk']] ?>">Editar</a>
+	                                <a class="btn btn-sm btn-outline-danger" data-confirm="¿Desactivar registro?" href="?r=<?= h($entity) ?>&action=delete&id=<?= (int)$row[$config['pk']] ?>">Desactivar</a>
+	                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -629,7 +731,7 @@ function generic_crud(string $entity): void
 
 function vehiculos_page(): void
 {
-    require_auth();
+    require_route_access('vehiculos');
     $clienteId = get_int('id_cliente');
     if (!$clienteId) redirect('clientes');
     $cliente = query('SELECT * FROM clientes WHERE id_cliente = ?', [$clienteId])->fetch();
@@ -638,6 +740,7 @@ function vehiculos_page(): void
     $editRow = $editId ? query('SELECT * FROM vehiculos WHERE id_vehiculo = ? AND id_cliente = ?', [$editId, $clienteId])->fetch() : null;
 
     if (($_GET['action'] ?? '') === 'delete') {
+        require_capability('vehiculos.write', 'vehiculos&id_cliente=' . $clienteId);
         $id = get_int('id');
         if ($id) {
             query('UPDATE vehiculos SET estado = 0 WHERE id_vehiculo = ? AND id_cliente = ?', [$id, $clienteId]);
@@ -647,6 +750,7 @@ function vehiculos_page(): void
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        require_capability('vehiculos.write', 'vehiculos&id_cliente=' . $clienteId);
         $id = (int)post('id_vehiculo', 0);
         $data = [
             trim((string)post('marca')),
@@ -675,12 +779,14 @@ function vehiculos_page(): void
 
     $rows = query('SELECT * FROM vehiculos WHERE id_cliente = ? AND estado = 1 ORDER BY marca, modelo', [$clienteId])->fetchAll();
         layout('Vehículos', function () use ($cliente, $rows, $clienteId, $editRow) {
+            $canWrite = can_do('vehiculos.write');
             $v = fn(string $key) => h((string)($editRow[$key] ?? ''));
             ?>
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div><h1 class="h3 mb-1">Vehículos de <?= h($cliente['nombre']) ?></h1><p class="text-muted mb-0"><?= h($cliente['telefono']) ?></p></div>
             <a class="btn btn-outline-secondary" href="?r=clientes">Volver</a>
         </div>
+        <?php if ($canWrite): ?>
         <div class="content-card p-4 mb-4 no-print">
             <form method="post" class="row g-3">
                 <input type="hidden" name="id_vehiculo" value="<?= h((string)($editRow['id_vehiculo'] ?? '')) ?>">
@@ -696,9 +802,10 @@ function vehiculos_page(): void
                 </div>
             </form>
         </div>
+        <?php endif; ?>
         <div class="content-card p-3 table-responsive">
             <table class="table"><thead><tr><th>Marca</th><th>Modelo</th><th>Año</th><th>Placa</th><th>Motor</th><th>Color</th><th></th></tr></thead><tbody>
-                <?php foreach ($rows as $row): ?><tr><td><?= h($row['marca']) ?></td><td><?= h($row['modelo']) ?></td><td><?= h((string)$row['anio']) ?></td><td><?= h($row['placa']) ?></td><td><?= h($row['tipo_motor']) ?></td><td><?= h($row['color']) ?></td><td class="text-end"><a class="btn btn-sm btn-outline-primary" href="?r=vehiculos&id_cliente=<?= (int)$clienteId ?>&edit=<?= (int)$row['id_vehiculo'] ?>">Editar</a> <a class="btn btn-sm btn-outline-danger" data-confirm="¿Desactivar vehículo?" href="?r=vehiculos&id_cliente=<?= (int)$clienteId ?>&action=delete&id=<?= (int)$row['id_vehiculo'] ?>">Desactivar</a></td></tr><?php endforeach; ?>
+	                <?php foreach ($rows as $row): ?><tr><td><?= h($row['marca']) ?></td><td><?= h($row['modelo']) ?></td><td><?= h((string)$row['anio']) ?></td><td><?= h($row['placa']) ?></td><td><?= h($row['tipo_motor']) ?></td><td><?= h($row['color']) ?></td><td class="text-end"><?php if ($canWrite): ?><a class="btn btn-sm btn-outline-primary" href="?r=vehiculos&id_cliente=<?= (int)$clienteId ?>&edit=<?= (int)$row['id_vehiculo'] ?>">Editar</a> <a class="btn btn-sm btn-outline-danger" data-confirm="¿Desactivar vehículo?" href="?r=vehiculos&id_cliente=<?= (int)$clienteId ?>&action=delete&id=<?= (int)$row['id_vehiculo'] ?>">Desactivar</a><?php endif; ?></td></tr><?php endforeach; ?>
                 <?php if (!$rows) table_empty(7); ?>
             </tbody></table>
         </div>
@@ -708,7 +815,7 @@ function vehiculos_page(): void
 
 function servicios_page(): void
 {
-    require_auth();
+    require_route_access('servicios');
     $action = $_GET['action'] ?? 'index';
 
     if ($action === 'view') {
@@ -769,6 +876,7 @@ function servicios_page(): void
     }
 
     if ($action === 'form') {
+        require_capability('servicios.write', 'servicios');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $idVehiculo = (int)post('id_vehiculo');
             $fecha = (string)post('fecha_servicio');
@@ -887,10 +995,11 @@ function servicios_page(): void
     )->fetchAll();
 
     layout('Servicios', function () use ($rows) {
+        $canWrite = can_do('servicios.write');
         ?>
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div><h1 class="h3 mb-1">Servicios</h1><p class="text-muted mb-0">Órdenes de taller y repuestos utilizados.</p></div>
-            <a class="btn btn-success" href="?r=servicios&action=form">Nuevo servicio</a>
+            <?php if ($canWrite): ?><a class="btn btn-success" href="?r=servicios&action=form">Nuevo servicio</a><?php endif; ?>
         </div>
         <div class="content-card p-3 table-responsive">
             <table class="table align-middle">
@@ -917,10 +1026,11 @@ function servicios_page(): void
 
 function compras_page(): void
 {
-    require_auth();
+    require_route_access('compras');
     $action = $_GET['action'] ?? 'index';
 
     if ($action === 'recibir') {
+        require_capability('compras.write', 'compras');
         $id = get_int('id');
         $compra = query('SELECT * FROM compras WHERE id_compra = ?', [$id])->fetch();
         if (!$compra || $compra['estado'] !== 'pendiente') {
@@ -947,6 +1057,7 @@ function compras_page(): void
     }
 
     if ($action === 'form') {
+        require_capability('compras.write', 'compras');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $proveedor = (int)post('id_proveedor');
             $fecha = (string)post('fecha_compra');
@@ -1023,12 +1134,13 @@ function compras_page(): void
 
     $rows = query("SELECT c.*, p.nombre proveedor FROM compras c JOIN proveedores p ON p.id_proveedor = c.id_proveedor ORDER BY c.fecha_compra DESC, c.id_compra DESC")->fetchAll();
     layout('Compras', function () use ($rows) {
+        $canWrite = can_do('compras.write');
         ?>
-        <div class="d-flex justify-content-between align-items-center mb-3"><h1 class="h3 mb-0">Compras</h1><a class="btn btn-success" href="?r=compras&action=form">Nueva compra</a></div>
+        <div class="d-flex justify-content-between align-items-center mb-3"><h1 class="h3 mb-0">Compras</h1><?php if ($canWrite): ?><a class="btn btn-success" href="?r=compras&action=form">Nueva compra</a><?php endif; ?></div>
         <div class="content-card p-3 table-responsive">
             <table class="table align-middle"><thead><tr><th>#</th><th>Fecha</th><th>Proveedor</th><th>Estado</th><th>Total</th><th></th></tr></thead><tbody>
                 <?php foreach ($rows as $row): ?>
-                    <tr><td><?= (int)$row['id_compra'] ?></td><td><?= h($row['fecha_compra']) ?></td><td><?= h($row['proveedor']) ?></td><td><?= h($row['estado']) ?></td><td>$<?= number_format((float)$row['total_estimado'], 2) ?></td><td class="text-end"><?php if ($row['estado'] === 'pendiente'): ?><a class="btn btn-sm btn-success" data-confirm="¿Recibir compra y actualizar inventario?" href="?r=compras&action=recibir&id=<?= (int)$row['id_compra'] ?>">Recibir</a><?php endif; ?></td></tr>
+	                    <tr><td><?= (int)$row['id_compra'] ?></td><td><?= h($row['fecha_compra']) ?></td><td><?= h($row['proveedor']) ?></td><td><?= h($row['estado']) ?></td><td>$<?= number_format((float)$row['total_estimado'], 2) ?></td><td class="text-end"><?php if ($canWrite && $row['estado'] === 'pendiente'): ?><a class="btn btn-sm btn-success" data-confirm="¿Recibir compra y actualizar inventario?" href="?r=compras&action=recibir&id=<?= (int)$row['id_compra'] ?>">Recibir</a><?php endif; ?></td></tr>
                 <?php endforeach; ?>
                 <?php if (!$rows) table_empty(6); ?>
             </tbody></table>
@@ -1039,7 +1151,7 @@ function compras_page(): void
 
 function reportes_page(): void
 {
-    require_auth();
+    require_route_access('reportes');
     $inventario = query('SELECT * FROM repuestos WHERE estado = 1 ORDER BY nombre')->fetchAll();
     $bajoStock = query('SELECT * FROM repuestos WHERE estado = 1 AND stock_actual <= stock_minimo ORDER BY nombre')->fetchAll();
     $compras = query("SELECT p.nombre proveedor, COUNT(*) compras, SUM(c.total_estimado) total FROM compras c JOIN proveedores p ON p.id_proveedor = c.id_proveedor GROUP BY p.id_proveedor, p.nombre ORDER BY total DESC")->fetchAll();
@@ -1057,6 +1169,7 @@ function reportes_page(): void
     )->fetchAll();
 
     if (($_GET['action'] ?? '') === 'export') {
+        require_capability('reportes.export', 'reportes');
         match ($_GET['type'] ?? '') {
             'inventario' => csv_response('inventario.csv', ['Código','Nombre','Stock','Mínimo','Ubicación'], $inventario, fn($r) => [$r['codigo'], $r['nombre'], $r['stock_actual'], $r['stock_minimo'], $r['ubicacion']]),
             'stock_bajo' => csv_response('stock_bajo.csv', ['Código','Nombre','Stock','Mínimo'], $bajoStock, fn($r) => [$r['codigo'], $r['nombre'], $r['stock_actual'], $r['stock_minimo']]),
