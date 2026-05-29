@@ -310,7 +310,6 @@ function login_page(): void
                             </div>
                             <button class="btn btn-success w-100">Ingresar</button>
                         </form>
-                        <p class="form-help mt-3 mb-0">Demo: admin@taller.test / password</p>
                     </div>
                 </div>
             </div>
